@@ -80,7 +80,7 @@ _cpython_optimized_decoders = _cpython_optimized_encoders + ("utf-16", "utf-32")
 
 
 def forbid_nonstring_types(
-    forbidden: list[str] | None, name: str | None = None
+        forbidden: list[str] | None, name: str | None = None
 ) -> Callable[[F], F]:
     """
     Decorator to forbid specific types for a method of StringMethods.
@@ -148,12 +148,28 @@ def forbid_nonstring_types(
     return _forbid_nonstring_types
 
 
+##### Original code
+# def _map_and_wrap(name: str | None, docstring: str | None):
+#     @forbid_nonstring_types(["bytes"], name=name)
+#     def wrapper(self):
+#         result = getattr(self._data.array, f"_str_{name}")()
+#         return self._wrap_result(
+#             result, returns_string=name not in ("isnumeric", "isdecimal")
+#         )
+#
+#     wrapper.__doc__ = docstring
+#     return wrapper
+
+##### Code by Ajay Sommi
 def _map_and_wrap(name: str | None, docstring: str | None):
     @forbid_nonstring_types(["bytes"], name=name)
     def wrapper(self):
+        is_num = False
         result = getattr(self._data.array, f"_str_{name}")()
+        if result.isnumeric or result.isdecimal:  # if result is numeric or decimal, will switch boolean value
+            is_num = True
         return self._wrap_result(
-            result, returns_string=name not in ("isnumeric", "isdecimal")
+            (result, is_num), returns_string=name in ("isnumeric", "isdecimal")  # changed code to allow decimals
         )
 
     wrapper.__doc__ = docstring
@@ -271,13 +287,13 @@ class StringMethods(NoNewAttributesMixin):
         raise TypeError(f"'{type(self).__name__}' object is not iterable")
 
     def _wrap_result(
-        self,
-        result,
-        name=None,
-        expand: bool | None = None,
-        fill_value=np.nan,
-        returns_string: bool = True,
-        dtype=None,
+            self,
+            result,
+            name=None,
+            expand: bool | None = None,
+            fill_value=np.nan,
+            returns_string: bool = True,
+            dtype=None,
     ):
         from pandas import (
             Index,
@@ -474,9 +490,9 @@ class StringMethods(NoNewAttributesMixin):
                 # in case of list-like `others`, all elements must be
                 # either Series/Index/np.ndarray (1-dim)...
                 if all(
-                    isinstance(x, (ABCSeries, ABCIndex, ExtensionArray))
-                    or (isinstance(x, np.ndarray) and x.ndim == 1)
-                    for x in others
+                        isinstance(x, (ABCSeries, ABCIndex, ExtensionArray))
+                        or (isinstance(x, np.ndarray) and x.ndim == 1)
+                        for x in others
                 ):
                     los: list[Series] = []
                     while others:  # iterate through list and append each element
@@ -494,11 +510,11 @@ class StringMethods(NoNewAttributesMixin):
 
     @forbid_nonstring_types(["bytes", "mixed", "mixed-integer"])
     def cat(
-        self,
-        others=None,
-        sep: str | None = None,
-        na_rep=None,
-        join: AlignJoin = "left",
+            self,
+            others=None,
+            sep: str | None = None,
+            na_rep=None,
+            join: AlignJoin = "left",
     ) -> str | Series | Index:
         """
         Concatenate strings in the Series/Index with given separator.
@@ -917,12 +933,12 @@ class StringMethods(NoNewAttributesMixin):
     )
     @forbid_nonstring_types(["bytes"])
     def split(
-        self,
-        pat: str | re.Pattern | None = None,
-        *,
-        n=-1,
-        expand: bool = False,
-        regex: bool | None = None,
+            self,
+            pat: str | re.Pattern | None = None,
+            *,
+            n=-1,
+            expand: bool = False,
+            regex: bool | None = None,
     ):
         if regex is False and is_re(pat):
             raise ValueError(
@@ -1047,7 +1063,7 @@ class StringMethods(NoNewAttributesMixin):
         % {
             "side": "first",
             "return": "3 elements containing the string itself, followed by two "
-            "empty strings",
+                      "empty strings",
             "also": "rpartition : Split the string at the last occurrence of `sep`.",
         }
     )
@@ -1067,7 +1083,7 @@ class StringMethods(NoNewAttributesMixin):
         % {
             "side": "last",
             "return": "3 elements containing two empty strings, followed by the "
-            "string itself",
+                      "string itself",
             "also": "partition : Split the string at the first occurrence of `sep`.",
         }
     )
@@ -1232,12 +1248,12 @@ class StringMethods(NoNewAttributesMixin):
 
     @forbid_nonstring_types(["bytes"])
     def contains(
-        self,
-        pat,
-        case: bool = True,
-        flags: int = 0,
-        na=lib.no_default,
-        regex: bool = True,
+            self,
+            pat,
+            case: bool = True,
+            flags: int = 0,
+            na=lib.no_default,
+            regex: bool = True,
     ):
         r"""
         Test if pattern or regex is contained within a string of a Series or Index.
@@ -1475,13 +1491,13 @@ class StringMethods(NoNewAttributesMixin):
 
     @forbid_nonstring_types(["bytes"])
     def replace(
-        self,
-        pat: str | re.Pattern | dict,
-        repl: str | Callable | None = None,
-        n: int = -1,
-        case: bool | None = None,
-        flags: int = 0,
-        regex: bool = False,
+            self,
+            pat: str | re.Pattern | dict,
+            repl: str | Callable | None = None,
+            n: int = -1,
+            case: bool | None = None,
+            flags: int = 0,
+            regex: bool = False,
     ):
         r"""
         Replace each occurrence of pattern/regex in the Series/Index.
@@ -1721,10 +1737,10 @@ class StringMethods(NoNewAttributesMixin):
 
     @forbid_nonstring_types(["bytes"])
     def pad(
-        self,
-        width: int,
-        side: Literal["left", "right", "both"] = "left",
-        fillchar: str = " ",
+            self,
+            width: int,
+            side: Literal["left", "right", "both"] = "left",
+            fillchar: str = " ",
     ):
         """
         Pad strings in the Series/Index up to width.
@@ -2355,19 +2371,19 @@ class StringMethods(NoNewAttributesMixin):
 
     @forbid_nonstring_types(["bytes"])
     def wrap(
-        self,
-        width: int,
-        expand_tabs: bool = True,
-        tabsize: int = 8,
-        replace_whitespace: bool = True,
-        drop_whitespace: bool = True,
-        initial_indent: str = "",
-        subsequent_indent: str = "",
-        fix_sentence_endings: bool = False,
-        break_long_words: bool = True,
-        break_on_hyphens: bool = True,
-        max_lines: int | None = None,
-        placeholder: str = " [...]",
+            self,
+            width: int,
+            expand_tabs: bool = True,
+            tabsize: int = 8,
+            replace_whitespace: bool = True,
+            drop_whitespace: bool = True,
+            initial_indent: str = "",
+            subsequent_indent: str = "",
+            fix_sentence_endings: bool = False,
+            break_long_words: bool = True,
+            break_on_hyphens: bool = True,
+            max_lines: int | None = None,
+            placeholder: str = " [...]",
     ):
         r"""
         Wrap strings in Series/Index at specified line width.
@@ -2480,9 +2496,9 @@ class StringMethods(NoNewAttributesMixin):
 
     @forbid_nonstring_types(["bytes"])
     def get_dummies(
-        self,
-        sep: str = "|",
-        dtype: NpDtype | None = None,
+            self,
+            sep: str = "|",
+            dtype: NpDtype | None = None,
     ):
         """
         Return DataFrame of dummy/indicator variables for Series.
@@ -2659,7 +2675,7 @@ class StringMethods(NoNewAttributesMixin):
 
     @forbid_nonstring_types(["bytes"])
     def startswith(
-        self, pat: str | tuple[str, ...], na: Scalar | lib.NoDefault = lib.no_default
+            self, pat: str | tuple[str, ...], na: Scalar | lib.NoDefault = lib.no_default
     ) -> Series | Index:
         """
         Test if the start of each string element matches a pattern.
@@ -2730,7 +2746,7 @@ class StringMethods(NoNewAttributesMixin):
 
     @forbid_nonstring_types(["bytes"])
     def endswith(
-        self, pat: str | tuple[str, ...], na: Scalar | lib.NoDefault = lib.no_default
+            self, pat: str | tuple[str, ...], na: Scalar | lib.NoDefault = lib.no_default
     ) -> Series | Index:
         """
         Test if the end of each string element matches a pattern.
@@ -2894,7 +2910,7 @@ class StringMethods(NoNewAttributesMixin):
 
     @forbid_nonstring_types(["bytes"])
     def extract(
-        self, pat: str, flags: int = 0, expand: bool = True
+            self, pat: str, flags: int = 0, expand: bool = True
     ) -> DataFrame | Series | Index:
         r"""
         Extract capture groups in the regex `pat` as columns in a DataFrame.
@@ -3774,52 +3790,52 @@ class StringMethods(NoNewAttributesMixin):
     isalnum = _map_and_wrap(
         "isalnum",
         docstring=_shared_docs["ismethods"] % _doc_args["isalnum"]
-        + _shared_docs["isalnum"],
+                  + _shared_docs["isalnum"],
     )
     isalpha = _map_and_wrap(
         "isalpha",
         docstring=_shared_docs["ismethods"] % _doc_args["isalpha"]
-        + _shared_docs["isalpha"],
+                  + _shared_docs["isalpha"],
     )
     isdigit = _map_and_wrap(
         "isdigit",
         docstring=_shared_docs["ismethods"] % _doc_args["isdigit"]
-        + _shared_docs["isdigit"],
+                  + _shared_docs["isdigit"],
     )
     isspace = _map_and_wrap(
         "isspace",
         docstring=_shared_docs["ismethods"] % _doc_args["isspace"]
-        + _shared_docs["isspace"],
+                  + _shared_docs["isspace"],
     )
     islower = _map_and_wrap(
         "islower",
         docstring=_shared_docs["ismethods"] % _doc_args["islower"]
-        + _shared_docs["islower"],
+                  + _shared_docs["islower"],
     )
     isascii = _map_and_wrap(
         "isascii",
         docstring=_shared_docs["ismethods"] % _doc_args["isascii"]
-        + _shared_docs["isascii"],
+                  + _shared_docs["isascii"],
     )
     isupper = _map_and_wrap(
         "isupper",
         docstring=_shared_docs["ismethods"] % _doc_args["isupper"]
-        + _shared_docs["isupper"],
+                  + _shared_docs["isupper"],
     )
     istitle = _map_and_wrap(
         "istitle",
         docstring=_shared_docs["ismethods"] % _doc_args["istitle"]
-        + _shared_docs["istitle"],
+                  + _shared_docs["istitle"],
     )
     isnumeric = _map_and_wrap(
         "isnumeric",
         docstring=_shared_docs["ismethods"] % _doc_args["isnumeric"]
-        + _shared_docs["isnumeric"],
+                  + _shared_docs["isnumeric"],
     )
     isdecimal = _map_and_wrap(
         "isdecimal",
         docstring=_shared_docs["ismethods"] % _doc_args["isdecimal"]
-        + _shared_docs["isdecimal"],
+                  + _shared_docs["isdecimal"],
     )
 
 
